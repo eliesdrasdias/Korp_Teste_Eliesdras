@@ -22,11 +22,9 @@ func main() {
 
 	defer db.Close()
 
-	err = db.Ping()
-	if err != nil {
-		log.Fatal("Erro ao conectar! O banco pode estar desligado:", err)
+	if err = db.Ping(); err != nil {
+		log.Fatal("Erro ao conectar!", err)
 	}
-
 	fmt.Println("Conetado ao PostgreSQL com sucesso!")
 
 	// Injeção de dependência
