@@ -1,0 +1,21 @@
+<div class="container">
+    <h2>Cadastro de Produtos</h2>
+    <form class="form-card" [formGroup]="produtoForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+            <label for="codigo">Código do Produto</label>
+            <input type="text" id="codigo" formControlName="codigo" placeholder="Ex: PRD-001">
+        </div>
+
+        <div class="form-group">
+            <label for="descricao">Descrição</label>
+            <input type="text" id="descricao" formControlName="descricao" placeholder="Nome do Produto">
+        </div>
+
+        <div class="form-group">
+            <label for="saldo">Saldo Inicial</label>
+            <input type="number" id="saldo" formControlName="saldo" placeholder="Quantidade em estoque">
+        </div>
+
+        <button type="submit" class="btn-primary">Salvar Produtos</button>
+    </form>
+</div>
