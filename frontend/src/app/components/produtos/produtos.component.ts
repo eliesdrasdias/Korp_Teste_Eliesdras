@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
-import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import { Component, inject } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ProdutoService } from '../../services/produto.service';
 
 @Component({
   selector: 'app-produtos',
@@ -9,17 +10,34 @@ import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angula
   styleUrl: './produtos.component.css'
 })
 export class ProdutosComponent {
-  produtoForm = new FormGroup({
-    codigo: new FormControl('', [Validators.required]),
-    descricao: new FormControl('', [Validators.required]),
-    saldo: new FormControl<number | null>(null, [Validators.required, Validators.min(0)])
+
+private produtoService = inject(ProdutoService);
+ 
+produtoForm = new FormGroup({
+  codigo: new FormControl('', [Validators.required]),
+  descricao: new FormControl('', [Validators.required]),
+  saldo: new FormControl<number | null>(null, [Validators.required, Validators.min(0)])
   });
 
-  onSubmit() {
+onSubmit() {
     if (this.produtoForm.valid) {
-      console.log('Produto pronto para ser salvo', this.produtoForm.value);
-      alert('Produto capturado com sucesso! Olhe o console (F12)');
-      this.produtoForm.reset();
+      const produtoData = {
+        codigo: this.produtoForm.value.codigo!,
+        descricao: this.produtoForm.value.descricao!,
+        saldo: Number(this.produtoForm.value.saldo)
+      };
+
+      this.produtoService.salvarProduto(produtoData).subscribe({
+        next: (resposta) => {
+          console.log('Produto salvo com sucesso:', resposta);
+          alert('Produto salvo com sucesso!');
+          this.produtoForm.reset();
+        },
+        error: (erro) => {
+          console.error('Erro ao salvar o produto:', erro);
+          alert('Erro ao salvar o produto!');
+        }
+      });
     } else {
       alert('Por favor, preencha todos os campos corretamente.');
     }

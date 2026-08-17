@@ -41,6 +41,7 @@ func (h *ProdutoHandler) Criar(w http.ResponseWriter, r *http.Request) {
 
 	id, err := h.repo.Salvar(p)
 	if err != nil {
+		fmt.Println("Falha no banco de dados", err)
 		http.Error(w, "Erro interno ao salvar o produto", http.StatusInternalServerError)
 		return
 	}
