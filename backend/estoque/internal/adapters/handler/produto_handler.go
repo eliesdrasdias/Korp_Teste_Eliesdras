@@ -49,3 +49,19 @@ func (h *ProdutoHandler) Criar(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, `{"mensagem": "Produto salvo com sucesso", "id": %d}`, id)
 }
+
+func (h *ProdutoHandler) Listar(w http.ResponseWriter, r *http.Request) {
+	produtos, err := h.repo.Listar()
+	if err != nil {
+		fmt.Println("Falha no banco de dados", err)
+		http.Error(w, "Erro interno ao listar os produtos", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(produtos)
+}

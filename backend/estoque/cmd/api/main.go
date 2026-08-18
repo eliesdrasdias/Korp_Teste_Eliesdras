@@ -32,6 +32,7 @@ func main() {
 	produtoHandler := handler.NewProdutoHandler(produtoRepo)
 	// Rotas
 	http.HandleFunc("/produtos", produtoHandler.Criar)
+	http.HandleFunc("/produtos/listar", produtoHandler.Listar)
 	// Servidor
 	fmt.Println("Servidor rodando na porta 8080")
 	http.ListenAndServe(":8080", nil)

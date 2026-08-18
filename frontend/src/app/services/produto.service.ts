@@ -1,5 +1,5 @@
-import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 export interface Produto {
@@ -18,5 +18,10 @@ export class ProdutoService {
   // Método para salvar um produto
   salvarProduto(produto: Produto): Observable<any> {
     return this.http.post(this.apiUrl, produto);
+  }
+
+  // Método para obter todos os produtos
+  obterProdutos(): Observable<Produto[]> {
+    return this.http.get<Produto[]>(`${this.apiUrl}/listar`);
   }
 }

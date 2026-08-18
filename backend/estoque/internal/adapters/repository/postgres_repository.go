@@ -13,6 +13,7 @@ func NewProdutoPostgres(db *sql.DB) *ProdutoPostgres {
 	return &ProdutoPostgres{db: db}
 }
 
+// Salvar
 func (r *ProdutoPostgres) Salvar(produto domain.Produto) (int, error) {
 	sqlStatement := `INSERT INTO produtos (codigo, descricao, saldo) VALUES ($1, $2, $3) RETURNING id`
 
@@ -24,4 +25,26 @@ func (r *ProdutoPostgres) Salvar(produto domain.Produto) (int, error) {
 	}
 
 	return id, nil
+}
+
+// Listar
+func (r *ProdutoPostgres) Listar() ([]domain.Produto, error) {
+	query := "SELECT codigo, descricao, saldo FROM produtos ORDER BY codigo ASC"
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var produtos []domain.Produto
+	for rows.Next() {
+		var produto domain.Produto
+		if err := rows.Scan(&produto.Codigo, &produto.Descricao, &produto.Saldo); err != nil {
+			return nil, err
+		}
+		produtos = append(produtos, produto)
+	}
+
+	return produtos, nil
 }
