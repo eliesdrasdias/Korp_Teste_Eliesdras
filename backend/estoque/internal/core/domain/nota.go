@@ -1,0 +1,18 @@
+package domain
+
+import "time"
+
+// Produtos que constam na nota
+type ItemNota struct {
+	ProdutoCodigo string  `json:"produto_codigo"`
+	Quantidade    int     `json:"quantidade"`
+	PrecoUnitario float64 `json:"preco_unitario"`
+	Subtotal      float64 `json:"subtotal"`
+}
+
+type NotaFiscal struct {
+	ID          int        `json:"id"`
+	DataEmissao time.Time  `json:"data"`
+	ValorTotal  float64    `json:"produtos"`
+	Itens       []ItemNota `json:"total"`
+}
