@@ -18,4 +18,39 @@
 
         <button type="submit" class="btn-primary">Salvar Produtos</button>
     </form>
+
+    <hr style="margin: 40px 0; border: 1px solid #eaeaea;">
+
+<div>
+  <h3 style="margin-bottom: 20px;">Produtos em Estoque</h3>
+  
+  <table border="1" style="width: 100%; text-align: left; border-collapse: collapse;">
+    <thead>
+      <tr style="background-color: #f4f4f4;">
+        <th style="padding: 12px; border: 1px solid #ddd;">Código</th>
+        <th style="padding: 12px; border: 1px solid #ddd;">Descrição</th>
+        <th style="padding: 12px; border: 1px solid #ddd;">Saldo Inicial</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      <!-- Itera sobre a lista de produtos -->
+      @for (produto of listarProdutos; track produto.codigo) {
+        <tr>
+          <td style="padding: 12px; border: 1px solid #ddd;">{{ produto.codigo }}</td>
+          <td style="padding: 12px; border: 1px solid #ddd;">{{ produto.descricao }}</td>
+          <td style="padding: 12px; border: 1px solid #ddd;">{{ produto.saldo }}</td>
+        </tr>
+      } @empty {
+        // Caso não haja produtos cadastrados
+        <tr>
+          <td colspan="3" style="text-align: center; padding: 20px; color: #666; border: 1px solid #ddd;">
+            Nenhum produto cadastrado no momento.
+          </td>
+        </tr>
+      }
+      
+    </tbody>
+  </table>
+</div>
 </div>
