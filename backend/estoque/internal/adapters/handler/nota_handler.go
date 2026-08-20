@@ -12,7 +12,7 @@ type NotaHandler struct {
 }
 
 // NewNotaHandler
-func NovoNotaHandler(repo ports.NotaRepository) *NotaHandler {
+func NewNotaHandler(repo ports.NotaRepository) *NotaHandler {
 	return &NotaHandler{repo: repo}
 }
 

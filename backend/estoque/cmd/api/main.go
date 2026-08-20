@@ -47,9 +47,12 @@ func main() {
 	// Injeção de dependência
 	produtoRepo := repository.NewProdutoPostgres(db)
 	produtoHandler := handler.NewProdutoHandler(produtoRepo)
+	notaRepo := repository.NewNotaRepositoryPostgres(db)
+	notaHandler := handler.NewNotaHandler(notaRepo)
 	// Rotas
 	http.HandleFunc("/produtos", corsMiddleware(produtoHandler.Criar))
 	http.HandleFunc("/produtos/listar", corsMiddleware(produtoHandler.Listar))
+	http.HandleFunc("/notas", corsMiddleware(notaHandler.Emitir))
 	// Servidor
 	fmt.Println("Servidor rodando na porta 8080")
 	http.ListenAndServe(":8080", nil)

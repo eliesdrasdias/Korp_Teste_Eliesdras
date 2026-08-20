@@ -10,7 +10,7 @@ type NotaRepositoryPostgres struct {
 	db *sql.DB
 }
 
-func NovoNotaRepositoryPostgres(db *sql.DB) *NotaRepositoryPostgres {
+func NewNotaRepositoryPostgres(db *sql.DB) *NotaRepositoryPostgres {
 	return &NotaRepositoryPostgres{db: db}
 }
 
