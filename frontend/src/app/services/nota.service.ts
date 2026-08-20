@@ -18,7 +18,7 @@ export interface NotaFiscal {
   providedIn: 'root'
 })
 export class NotaService {
-  private apiUrl = 'http://localhost:8080/notas';
+  private apiUrl = 'http://localhost:8081/notas';
 
   constructor(private http: HttpClient) { }
 
