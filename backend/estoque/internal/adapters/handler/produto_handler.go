@@ -58,3 +58,23 @@ func (h *ProdutoHandler) Listar(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(produtos)
 }
+
+func (h *ProdutoHandler) BaixarEstoque(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var itens []domain.ItemNota
+	if err := json.NewDecoder(r.Body).Decode(&itens); err != nil {
+		http.Error(w, "Erro ao ler os dados enviados", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.repo.BaixarEstoque(itens); err != nil {
+		http.Error(w, "Erro interno ao atualizar estoque", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

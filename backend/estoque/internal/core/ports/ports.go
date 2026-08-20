@@ -5,6 +5,7 @@ import "sistema-notas/estoque/internal/core/domain"
 type ProdutoRepository interface {
 	Salvar(produto domain.Produto) (int, error)
 	Listar() ([]domain.Produto, error)
+	BaixarEstoque(itens []domain.ItemNota) error
 }
 
 type NotaRepository interface {

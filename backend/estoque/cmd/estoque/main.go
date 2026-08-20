@@ -45,6 +45,7 @@ func main() {
 
 	http.HandleFunc("/produtos", corsMiddleware(produtoHandler.Criar))
 	http.HandleFunc("/produtos/listar", corsMiddleware(produtoHandler.Listar))
+	http.HandleFunc("/produtos/baixar-estoque", corsMiddleware(produtoHandler.BaixarEstoque))
 
 	fmt.Println("Serviço de Estoque rodando na porta 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

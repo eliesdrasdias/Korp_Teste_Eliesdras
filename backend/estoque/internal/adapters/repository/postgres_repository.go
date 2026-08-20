@@ -48,3 +48,22 @@ func (r *ProdutoPostgres) Listar() ([]domain.Produto, error) {
 
 	return produtos, nil
 }
+
+func (r *ProdutoPostgres) BaixarEstoque(itens []domain.ItemNota) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	query := `UPDATE produtos SET saldo = saldo - $1 WHERE codigo = $2`
+
+	for _, item := range itens {
+		_, err := tx.Exec(query, item.Quantidade, item.ProdutoCodigo)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
