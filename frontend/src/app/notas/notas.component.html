@@ -1,1 +1,73 @@
-<p>notas works!</p>
+<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #333;">Emissão de Nota Fiscal</h2>
+  <hr style="margin-bottom: 20px; border: 1px solid #eaeaea;">
+
+  <div style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; background-color: #f9f9f9; border-radius: 8px;">
+    <h4 style="margin-top: 0;">Adicionar Produto</h4>
+    
+    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+      
+      <div style="flex: 1; min-width: 200px;">
+        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Produto:</label>
+        <select [(ngModel)]="produtoSelecionado" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+          <option value="" disabled>Selecione um produto</option>
+          @for (produto of produtosDisponiveis; track produto.codigo) {
+            <option [value]="produto.codigo">{{ produto.descricao }} (Cód: {{ produto.codigo }})</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Quantidade:</label>
+        <input type="number" [(ngModel)]="quantidade" min="1" style="padding: 10px; width: 100px; border: 1px solid #ccc; border-radius: 4px;">
+      </div>
+
+      <div>
+        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Preço Un. (R$):</label>
+        <input type="number" [(ngModel)]="precoUnitario" min="0.01" step="0.01" style="padding: 10px; width: 120px; border: 1px solid #ccc; border-radius: 4px;">
+      </div>
+
+      <button (click)="adicionarItem()" style="padding: 10px 20px; cursor: pointer; background-color: #0056b3; color: white; border: none; border-radius: 4px; font-weight: bold;">
+        Adicionar
+      </button>
+    </div>
+  </div>
+
+  <h3 style="color: #333;">Itens da Nota Atual</h3>
+  <table border="1" style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 10px;">
+    <thead>
+      <tr style="background-color: #f4f4f4;">
+        <th style="padding: 12px; border: 1px solid #ddd;">Código</th>
+        <th style="padding: 12px; border: 1px solid #ddd;">Quantidade</th>
+        <th style="padding: 12px; border: 1px solid #ddd;">Preço Un.</th>
+        <th style="padding: 12px; border: 1px solid #ddd;">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      @for (item of itensNota; track item.produto_codigo) {
+        <tr>
+          <td style="padding: 12px; border: 1px solid #ddd;">{{ item.produto_codigo }}</td>
+          <td style="padding: 12px; border: 1px solid #ddd;">{{ item.quantidade }}</td>
+          <td style="padding: 12px; border: 1px solid #ddd;">R$ {{ item.preco_unitario }}</td>
+          <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">R$ {{ item.subtotal }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" style="text-align: center; padding: 30px; color: #666; border: 1px solid #ddd;">
+            Nenhum produto adicionado à nota ainda.
+          </td>
+        </tr>
+      }
+      
+    </tbody>
+  </table>
+
+  <div style="margin-top: 30px; text-align: right; padding-top: 20px; border-top: 2px solid #eaeaea;">
+    <h2 style="color: #d9534f; margin-bottom: 15px;">Total da Nota: R$ {{ valorTotalDaNota }}</h2>
+    
+    <button (click)="emitirNota()" style="padding: 15px 30px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #28a745; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      Emitir Nota Fiscal
+    </button>
+  </div>
+</div>

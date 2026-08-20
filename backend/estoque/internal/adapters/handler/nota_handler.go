@@ -37,7 +37,7 @@ func (h *NotaHandler) Emitir(w http.ResponseWriter, r *http.Request) {
 
 	notaID, err := h.repo.Emitir(nota)
 	if err != nil {
-		http.Error(w, "Erro interno ao salvar a nota", http.StatusInternalServerError)
+		http.Error(w, "Erro interno ao salvar a nota"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

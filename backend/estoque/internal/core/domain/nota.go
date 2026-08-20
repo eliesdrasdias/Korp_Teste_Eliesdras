@@ -12,7 +12,7 @@ type ItemNota struct {
 
 type NotaFiscal struct {
 	ID          int        `json:"id"`
-	DataEmissao time.Time  `json:"data"`
-	ValorTotal  float64    `json:"produtos"`
-	Itens       []ItemNota `json:"total"`
+	DataEmissao time.Time  `json:"data_emissao"`
+	ValorTotal  float64    `json:"valor_total"`
+	Itens       []ItemNota `json:"itens"`
 }
