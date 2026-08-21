@@ -14,5 +14,6 @@ type NotaFiscal struct {
 	ID          int        `json:"id"`
 	DataEmissao time.Time  `json:"data_emissao"`
 	ValorTotal  float64    `json:"valor_total"`
+	Status      string     `json:"status"`
 	Itens       []ItemNota `json:"itens"`
 }

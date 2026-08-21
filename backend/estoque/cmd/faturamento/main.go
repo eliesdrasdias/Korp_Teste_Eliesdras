@@ -44,6 +44,7 @@ func main() {
 	notaHandler := handler.NewNotaHandler(notaRepo)
 
 	http.HandleFunc("/notas", corsMiddleware(notaHandler.Emitir))
+	http.HandleFunc("/notas/imprimir", corsMiddleware(notaHandler.Imprimir))
 
 	fmt.Println("Serviço de Faturamento rodando na porta 8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

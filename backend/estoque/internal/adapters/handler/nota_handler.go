@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"sistema-notas/estoque/internal/core/domain"
@@ -47,4 +48,41 @@ func (h *NotaHandler) Emitir(w http.ResponseWriter, r *http.Request) {
 		"mensagem":  "Nota emitida com sucesso",
 		"id_gerado": notaID,
 	})
+}
+
+func (h *NotaHandler) Imprimir(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		ID int `json:"id"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	nota, err := h.repo.BuscarNotaPorID(req.ID)
+	if err != nil {
+		http.Error(w, "Nota não encontrada", http.StatusNotFound)
+		return
+	}
+
+	if nota.Status != "Aberta" {
+		http.Error(w, "Apenas notas Abertas podem ser impressas.", http.StatusBadRequest)
+		return
+	}
+
+	jsonData, _ := json.Marshal(nota.Itens)
+	resp, err := http.Post("http://localhost:8080/produtos/baixa", "application/json", bytes.NewBuffer(jsonData))
+
+	// 3. TRATAMENTO DE FALHA OBRIGATÓRIO
+	if err != nil || resp.StatusCode != http.StatusOK {
+		http.Error(w, "O Serviço de Estoque está indisponível no momento. A nota não pôde ser impressa.", http.StatusServiceUnavailable)
+		return
+	}
+
+	h.repo.FecharNota(req.ID)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"mensagem": "Nota impressa com sucesso!"})
 }
