@@ -70,4 +70,12 @@
       Emitir Nota Fiscal
     </button>
   </div>
+
+  <div *ngIf="notaGeradaId" style="margin-top: 20px; padding: 15px; border: 1px solid #ccc;">
+  <p><strong>Nota Fiscal #{{ notaGeradaId }} gerada com sucesso! (Status: Aberta)</strong></p>
+  
+  <button (click)="imprimirNota()" [disabled]="imprimindo" style="background-color: #007bff; color: white;">
+    {{ imprimindo ? 'Processando...' : 'Imprimir Nota Fiscal' }}
+  </button>
+</div>
 </div>

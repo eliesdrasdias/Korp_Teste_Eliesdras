@@ -11,6 +11,8 @@ import { ProdutoService } from '../services/produto.service';
   styleUrls: ['./notas.component.css']
 })
 export class NotasComponent implements OnInit {
+  notaGeradaId: number | null = null;
+  imprimindo: boolean = false;
   produtosDisponiveis: any[] = [];
   produtoSelecionado: string = '';
   quantidade: number = 1;
@@ -74,12 +76,31 @@ export class NotasComponent implements OnInit {
     this.notaService.emitirNota(nota).subscribe({
       next: (resposta) => {
         alert(`Sucesso! ${resposta.mensagem} (ID: ${resposta.id_gerado})`);
+        this.notaGeradaId = resposta.id_gerado;
         this.itensNota = [];
         this.valorTotalDaNota = 0;
       },
       error: (err) => {
         alert("Erro ao emitir a nota fiscal. Verifique o console.");
         console.error(err);
+      }
+    });
+  }
+
+  imprimirNota() {
+    if (!this.notaGeradaId) return;
+    
+    this.imprimindo = true;
+    
+    this.notaService.imprimirNota(this.notaGeradaId).subscribe({
+      next: (res) => {
+        alert("Sucesso: " + res.mensagem);
+        this.imprimindo = false;
+        this.notaGeradaId = null;
+      },
+      error: (err) => {
+        alert("Atenção: " + err.error); 
+        this.imprimindo = false;
       }
     });
   }

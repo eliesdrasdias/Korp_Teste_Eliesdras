@@ -26,4 +26,8 @@ export class NotaService {
   emitirNota(nota: NotaFiscal): Observable<any> {
     return this.http.post(this.apiUrl, nota);
   }
+
+  imprimirNota(id: number): Observable<any> {
+    return this.http.post('http://localhost:8081/notas/imprimir', { id });
+  }
 }
