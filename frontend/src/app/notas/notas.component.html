@@ -1,81 +1,83 @@
-<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-  <h2 style="color: #333;">Emissão de Nota Fiscal</h2>
-  <hr style="margin-bottom: 20px; border: 1px solid #eaeaea;">
+<main class="page">
+  <h2>Emissão de nota fiscal</h2>
 
-  <div style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; background-color: #f9f9f9; border-radius: 8px;">
-    <h4 style="margin-top: 0;">Adicionar Produto</h4>
-    
-    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-      
-      <div style="flex: 1; min-width: 200px;">
-        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Produto:</label>
-        <select [(ngModel)]="produtoSelecionado" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-          <option value="" disabled>Selecione um produto</option>
+  @if (mensagem) { <p class="success" role="status">{{ mensagem }}</p> }
+  @if (erro) { <p class="error" role="alert">{{ erro }}</p> }
+
+  <section class="card">
+    <h3>Adicionar produto</h3>
+
+    <div class="fields">
+      <label for="produto">Produto
+        <select id="produto" [(ngModel)]="produtoSelecionado" [disabled]="carregandoProdutos">
+          <option value="">{{ carregandoProdutos ? 'Carregando produtos...' : 'Selecione um produto' }}</option>
           @for (produto of produtosDisponiveis; track produto.codigo) {
-            <option [value]="produto.codigo">{{ produto.descricao }} (Cód: {{ produto.codigo }})</option>
+            <option [value]="produto.codigo">
+              {{ produto.descricao }} — {{ produto.codigo }} (saldo: {{ produto.saldo }})
+            </option>
           }
         </select>
-      </div>
+      </label>
 
-      <div>
-        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Quantidade:</label>
-        <input type="number" [(ngModel)]="quantidade" min="1" style="padding: 10px; width: 100px; border: 1px solid #ccc; border-radius: 4px;">
-      </div>
+      <label for="quantidade">Quantidade
+        <input id="quantidade" type="number" [(ngModel)]="quantidade" min="1" step="1">
+      </label>
 
-      <div>
-        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Preço Un. (R$):</label>
-        <input type="number" [(ngModel)]="precoUnitario" min="0.01" step="0.01" style="padding: 10px; width: 120px; border: 1px solid #ccc; border-radius: 4px;">
-      </div>
+      <label for="preco">Preço unitário
+        <input id="preco" type="number" [(ngModel)]="precoUnitario" min="0.01" step="0.01">
+      </label>
 
-      <button (click)="adicionarItem()" style="padding: 10px 20px; cursor: pointer; background-color: #0056b3; color: white; border: none; border-radius: 4px; font-weight: bold;">
+      <button type="button" (click)="adicionarItem()" [disabled]="carregandoProdutos">
         Adicionar
       </button>
     </div>
-  </div>
 
-  <h3 style="color: #333;">Itens da Nota Atual</h3>
-  <table border="1" style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 10px;">
-    <thead>
-      <tr style="background-color: #f4f4f4;">
-        <th style="padding: 12px; border: 1px solid #ddd;">Código</th>
-        <th style="padding: 12px; border: 1px solid #ddd;">Quantidade</th>
-        <th style="padding: 12px; border: 1px solid #ddd;">Preço Un.</th>
-        <th style="padding: 12px; border: 1px solid #ddd;">Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>
-      
-      @for (item of itensNota; track item.produto_codigo) {
-        <tr>
-          <td style="padding: 12px; border: 1px solid #ddd;">{{ item.produto_codigo }}</td>
-          <td style="padding: 12px; border: 1px solid #ddd;">{{ item.quantidade }}</td>
-          <td style="padding: 12px; border: 1px solid #ddd;">R$ {{ item.preco_unitario }}</td>
-          <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">R$ {{ item.subtotal }}</td>
-        </tr>
-      } @empty {
-        <tr>
-          <td colspan="4" style="text-align: center; padding: 30px; color: #666; border: 1px solid #ddd;">
-            Nenhum produto adicionado à nota ainda.
-          </td>
-        </tr>
-      }
-      
-    </tbody>
-  </table>
+    @if (produtoAtual) { <small>Saldo atual: {{ produtoAtual.saldo }}</small> }
+  </section>
 
-  <div style="margin-top: 30px; text-align: right; padding-top: 20px; border-top: 2px solid #eaeaea;">
-    <h2 style="color: #d9534f; margin-bottom: 15px;">Total da Nota: R$ {{ valorTotalDaNota }}</h2>
-    
-    <button (click)="emitirNota()" style="padding: 15px 30px; font-size: 16px; font-weight: bold; cursor: pointer; background-color: #28a745; color: white; border: none; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      Emitir Nota Fiscal
+  <section class="card">
+    <h3>Itens da nota</h3>
+
+    @if (itensNota.length === 0) {
+      <p>Nenhum produto adicionado à nota ainda.</p>
+    } @else {
+      <table>
+        <thead><tr><th>Código</th><th>Descrição</th><th>Quantidade</th><th>Preço</th><th>Subtotal</th><th>Ação</th></tr></thead>
+        <tbody>
+          @for (item of itensNota; track $index) {
+            <tr>
+              <td>{{ item.produto_codigo }}</td><td>{{ item.descricao }}</td><td>{{ item.quantidade }}</td>
+              <td>{{ item.preco_unitario | currency:'BRL' }}</td><td>{{ item.subtotal | currency:'BRL' }}</td>
+              <td><button type="button" class="link" (click)="removerItem($index)">Remover</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <p class="total">Total: {{ valorTotalDaNota | currency:'BRL' }}</p>
+    <button type="button" class="success-button" (click)="emitirNota()" [disabled]="emitindo || itensNota.length === 0">
+      {{ emitindo ? 'Criando nota...' : 'Criar nota fiscal' }}
     </button>
-  </div>
+  </section>
 
-  <div *ngIf="notaGeradaId" style="margin-top: 20px; padding: 15px; border: 1px solid #ccc;">
-  <p><strong>Nota Fiscal #{{ notaGeradaId }} gerada com sucesso! (Status: Aberta)</strong></p>
-  
-  <button (click)="imprimirNota()" [disabled]="imprimindo" style="background-color: #007bff; color: white;">
-    {{ imprimindo ? 'Processando...' : 'Imprimir Nota Fiscal' }}
-  </button>
-</div>
-</div>
+  @if (notaGerada) {
+    <section class="card">
+      <h3>Nota {{ notaGerada.numero }} — {{ notaGerada.status }}</h3>
+      <button type="button" (click)="imprimirNota()" [disabled]="imprimindo || notaGerada.status === 'FECHADA'">
+        {{ imprimindo ? 'Processando nota...' : 'Imprimir Nota' }}
+      </button>
+    </section>
+  }
+
+  <section class="card">
+    <h3>Notas emitidas</h3>
+    @if (carregandoNotas) { <p>Carregando notas...</p> }
+    @else if (notas.length === 0) { <p>Nenhuma nota emitida.</p> }
+    @else {
+      <table><thead><tr><th>Número</th><th>Status</th><th>Total</th></tr></thead><tbody>
+        @for (nota of notas; track nota.id) { <tr><td>{{ nota.numero }}</td><td>{{ nota.status }}</td><td>{{ nota.valor_total | currency:'BRL' }}</td></tr> }
+      </tbody></table>
+    }
+  </section>
+</main>

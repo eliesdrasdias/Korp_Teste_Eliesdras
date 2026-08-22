@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sistema-notas/estoque/internal/adapters/handler"
 	"sistema-notas/estoque/internal/adapters/repository"
+	"sistema-notas/estoque/internal/config"
 
 	_ "github.com/lib/pq"
 )
@@ -27,7 +28,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	connStr := "host=localhost port=5432 user=root password=rootpassword dbname=sistema_notas sslmode=disable"
+	connStr := config.Get("DATABASE_URL", "host=localhost port=5432 user=postgres password=postgres dbname=sistema_notas sslmode=disable")
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -45,7 +46,7 @@ func main() {
 
 	http.HandleFunc("/produtos", corsMiddleware(produtoHandler.Criar))
 	http.HandleFunc("/produtos/listar", corsMiddleware(produtoHandler.Listar))
-	http.HandleFunc("/produtos/baixar-estoque", corsMiddleware(produtoHandler.BaixarEstoque))
+	http.HandleFunc("/produtos/baixa", corsMiddleware(produtoHandler.BaixarEstoque))
 
 	fmt.Println("Serviço de Estoque rodando na porta 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

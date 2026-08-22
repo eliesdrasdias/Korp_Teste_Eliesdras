@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"sistema-notas/estoque/internal/core/domain"
 )
 
@@ -55,15 +56,30 @@ func (r *ProdutoPostgres) BaixarEstoque(itens []domain.ItemNota) error {
 		return err
 	}
 
-	query := `UPDATE produtos SET saldo = saldo - $1 WHERE codigo = $2`
+	defer tx.Rollback()
 
+	quantidades := make(map[string]int)
 	for _, item := range itens {
-		_, err := tx.Exec(query, item.Quantidade, item.ProdutoCodigo)
+		if item.ProdutoCodigo == "" || item.Quantidade <= 0 {
+			return domain.ErrValidacao
+		}
+		quantidades[item.ProdutoCodigo] += item.Quantidade
+	}
+	for codigo, quantidade := range quantidades {
+		var saldo float64
+		err := tx.QueryRow(`SELECT saldo FROM produtos WHERE codigo = $1 FOR UPDATE`, codigo).Scan(&saldo)
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("%w: %s", domain.ErrProdutoInexistente, codigo)
+		}
 		if err != nil {
-			tx.Rollback()
+			return err
+		}
+		if saldo < float64(quantidade) {
+			return fmt.Errorf("%w para o produto %s", domain.ErrSaldoInsuficiente, codigo)
+		}
+		if _, err = tx.Exec(`UPDATE produtos SET saldo = saldo - $1 WHERE codigo = $2`, quantidade, codigo); err != nil {
 			return err
 		}
 	}
-
 	return tx.Commit()
 }

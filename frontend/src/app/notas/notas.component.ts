@@ -1,8 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ItemNota, NotaFiscal, NotaService } from '../services/nota.service';
-import { ProdutoService } from '../services/produto.service';
+import { Produto, ProdutoService } from '../services/produto.service';
+
+interface ItemNotaTela extends ItemNota {
+  descricao: string;
+}
+
 @Component({
   selector: 'app-notas',
   standalone: true,
@@ -11,97 +18,154 @@ import { ProdutoService } from '../services/produto.service';
   styleUrls: ['./notas.component.css']
 })
 export class NotasComponent implements OnInit {
-  notaGeradaId: number | null = null;
-  imprimindo: boolean = false;
-  produtosDisponiveis: any[] = [];
-  produtoSelecionado: string = '';
-  quantidade: number = 1;
-  precoUnitario: number = 0;
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly produtoService = inject(ProdutoService);
+  private readonly notaService = inject(NotaService);
 
-  itensNota: ItemNota[] = [];
-  valorTotalDaNota: number = 0;
+  produtosDisponiveis: Produto[] = [];
+  notas: NotaFiscal[] = [];
+  itensNota: ItemNotaTela[] = [];
 
-  constructor(
-    private produtoService: ProdutoService,
-    private notaService: NotaService
-  ) {}
+  produtoSelecionado = '';
+  quantidade = 1;
+  precoUnitario = 0;
+  notaGerada: NotaFiscal | null = null;
 
-  ngOnInit() {
+  carregandoProdutos = false;
+  carregandoNotas = false;
+  emitindo = false;
+  imprimindo = false;
+  erro = '';
+  mensagem = '';
+
+  get valorTotalDaNota(): number {
+    return (this.itensNota ?? []).reduce((total, item) => total + item.subtotal, 0);
+  }
+
+  get produtoAtual(): Produto | undefined {
+    return (this.produtosDisponiveis ?? []).find(produto => produto.codigo === this.produtoSelecionado);
+  }
+
+  ngOnInit(): void {
     this.carregarProdutos();
+    this.carregarNotas();
   }
 
-  carregarProdutos() {
-    this.produtoService.obterProdutos().subscribe({
-      next: (dados) => {
-        this.produtosDisponiveis = dados;
-      },
-      error: (err) => console.error('Erro ao carregar produtos', err)
-    });
+  carregarProdutos(): void {
+    this.carregandoProdutos = true;
+
+    this.produtoService.obterProdutos()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.carregandoProdutos = false)
+      )
+      .subscribe({
+        next: produtos => this.produtosDisponiveis = Array.isArray(produtos) ? produtos : [],
+        error: () => this.erro = 'Não foi possível carregar os produtos do serviço de estoque.'
+      });
   }
 
-  // Função que adiciona um item na nota
-  adicionarItem() {
-    if (!this.produtoSelecionado || this.quantidade <= 0 || this.precoUnitario <= 0) {
-      alert("Preencha o produto, quantidade e preço corretamente.");
+  carregarNotas(): void {
+    this.carregandoNotas = true;
+
+    this.notaService.listarNotas()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.carregandoNotas = false)
+      )
+      .subscribe({
+        next: notas => this.notas = Array.isArray(notas) ? notas : [],
+        // A indisponibilidade da listagem de notas não bloqueia a seleção de produtos.
+        error: () => this.erro = 'Não foi possível carregar as notas já emitidas.'
+      });
+  }
+
+  adicionarItem(): void {
+    this.erro = '';
+    const produto = this.produtoAtual;
+
+    if (!produto) {
+      this.erro = 'Selecione um produto.';
       return;
     }
 
-    const subtotal = this.quantidade * this.precoUnitario;
-    
+    if (!Number.isInteger(this.quantidade) || this.quantidade <= 0 || this.precoUnitario <= 0) {
+      this.erro = 'Informe uma quantidade inteira maior que zero e um preço válido.';
+      return;
+    }
+
+    const quantidadeJaAdicionada = (this.itensNota ?? [])
+      .filter(item => item.produto_codigo === produto.codigo)
+      .reduce((total, item) => total + item.quantidade, 0);
+
+    if (quantidadeJaAdicionada + this.quantidade > produto.saldo) {
+      this.erro = `Quantidade maior que o saldo disponível de ${produto.descricao} (${produto.saldo}).`;
+      return;
+    }
+
+    // Mantém a lista sempre utilizável mesmo diante de uma alteração indevida de estado.
+    this.itensNota = this.itensNota ?? [];
     this.itensNota.push({
-      produto_codigo: this.produtoSelecionado,
+      produto_codigo: produto.codigo,
+      descricao: produto.descricao,
       quantidade: this.quantidade,
       preco_unitario: this.precoUnitario,
-      subtotal: subtotal
+      subtotal: this.quantidade * this.precoUnitario
     });
 
-    this.valorTotalDaNota += subtotal;
     this.produtoSelecionado = '';
     this.quantidade = 1;
     this.precoUnitario = 0;
   }
 
-  // Função para emitir a nota
-  emitirNota() {
-    if (this.itensNota.length === 0) {
-      alert("Sua nota precisa ter pelo menos um item.");
+  removerItem(index: number): void {
+    this.itensNota.splice(index, 1);
+  }
+
+  emitirNota(): void {
+    if (!this.itensNota?.length) {
+      this.erro = 'Adicione pelo menos um produto à nota.';
       return;
     }
 
-    const nota: NotaFiscal = {
-      valor_total: this.valorTotalDaNota,
-      itens: this.itensNota
-    };
+    this.emitindo = true;
+    this.erro = '';
+    this.mensagem = '';
 
-    this.notaService.emitirNota(nota).subscribe({
-      next: (resposta) => {
-        alert(`Sucesso! ${resposta.mensagem} (ID: ${resposta.id_gerado})`);
-        this.notaGeradaId = resposta.id_gerado;
-        this.itensNota = [];
-        this.valorTotalDaNota = 0;
-      },
-      error: (err) => {
-        alert("Erro ao emitir a nota fiscal. Verifique o console.");
-        console.error(err);
-      }
-    });
+    // A descrição é usada apenas na interface; o contrato do backend recebe código e valores.
+    const itens: ItemNota[] = (this.itensNota ?? []).map(({ descricao, ...item }) => item);
+    const nota: NotaFiscal = { valor_total: this.valorTotalDaNota, itens };
+
+    this.notaService.emitirNota(nota)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.emitindo = false))
+      .subscribe({
+        next: notaCriada => {
+          this.notaGerada = notaCriada;
+          this.itensNota = [];
+          this.mensagem = `Nota ${notaCriada.numero} criada como ABERTA.`;
+          this.carregarNotas();
+        },
+        error: error => this.erro = error.error?.message ?? 'Não foi possível criar a nota.'
+      });
   }
 
-  imprimirNota() {
-    if (!this.notaGeradaId) return;
-    
+  imprimirNota(): void {
+    if (!this.notaGerada || this.notaGerada.status === 'FECHADA' || this.imprimindo) return;
+
     this.imprimindo = true;
-    
-    this.notaService.imprimirNota(this.notaGeradaId).subscribe({
-      next: (res) => {
-        alert("Sucesso: " + res.mensagem);
-        this.imprimindo = false;
-        this.notaGeradaId = null;
-      },
-      error: (err) => {
-        alert("Atenção: " + err.error); 
-        this.imprimindo = false;
-      }
-    });
+    this.erro = '';
+    this.mensagem = '';
+
+    this.notaService.imprimirNota(this.notaGerada.id!)
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.imprimindo = false))
+      .subscribe({
+        next: resposta => {
+          this.notaGerada = { ...this.notaGerada!, status: resposta.status };
+          this.mensagem = resposta.message;
+          this.carregarProdutos();
+          this.carregarNotas();
+        },
+        error: error => this.erro = error.error?.message ?? 'Não foi possível fechar a nota.'
+      });
   }
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sistema-notas/estoque/internal/adapters/handler"
 	"sistema-notas/estoque/internal/adapters/repository"
+	"sistema-notas/estoque/internal/config"
 
 	_ "github.com/lib/pq"
 )
@@ -27,7 +28,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	connStr := "host=localhost port=5432 user=root password=rootpassword dbname=sistema_notas sslmode=disable"
+	connStr := config.Get("DATABASE_URL", "host=localhost port=5432 user=postgres password=postgres dbname=sistema_notas sslmode=disable")
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -41,9 +42,10 @@ func main() {
 	fmt.Println("Faturamento conectado ao PostgreSQL com sucesso!")
 
 	notaRepo := repository.NewNotaRepositoryPostgres(db)
-	notaHandler := handler.NewNotaHandler(notaRepo)
+	notaHandler := handler.NewNotaHandler(notaRepo, config.Get("ESTOQUE_URL", "http://localhost:8080"))
 
 	http.HandleFunc("/notas", corsMiddleware(notaHandler.Emitir))
+	http.HandleFunc("/notas/listar", corsMiddleware(notaHandler.Listar))
 	http.HandleFunc("/notas/imprimir", corsMiddleware(notaHandler.Imprimir))
 
 	fmt.Println("Serviço de Faturamento rodando na porta 8081")

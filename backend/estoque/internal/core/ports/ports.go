@@ -9,7 +9,7 @@ type ProdutoRepository interface {
 }
 
 type NotaRepository interface {
-	Emitir(nota domain.NotaFiscal) (int, error)
+	Emitir(nota domain.NotaFiscal) (domain.NotaFiscal, error)
 	Listar() ([]domain.NotaFiscal, error)
 	BuscarNotaPorID(id int) (domain.NotaFiscal, error)
 	FecharNota(id int) error

@@ -3,86 +3,135 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"io"
+	"log"
 	"net/http"
+	"strings"
+	"time"
+
 	"sistema-notas/estoque/internal/core/domain"
 	"sistema-notas/estoque/internal/core/ports"
 )
 
 type NotaHandler struct {
-	repo ports.NotaRepository
+	repo     ports.NotaRepository
+	stockURL string
+	client   *http.Client
 }
 
-// NewNotaHandler
-func NewNotaHandler(repo ports.NotaRepository) *NotaHandler {
-	return &NotaHandler{repo: repo}
+func NewNotaHandler(repo ports.NotaRepository, stockURL string) *NotaHandler {
+	return &NotaHandler{repo: repo, stockURL: strings.TrimRight(stockURL, "/"), client: &http.Client{Timeout: 4 * time.Second}}
 }
 
-// Emitir
 func (h *NotaHandler) Emitir(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Método não permitido")
 		return
 	}
-
 	var nota domain.NotaFiscal
-	err := json.NewDecoder(r.Body).Decode(&nota)
+	if err := decodeJSON(r, &nota); err != nil {
+		writeError(w, http.StatusBadRequest, "JSON inválido")
+		return
+	}
+	if err := validarNota(&nota); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	created, err := h.repo.Emitir(nota)
 	if err != nil {
-		http.Error(w, "Erro ao ler os dados enviados", http.StatusBadRequest)
+		logUnexpected("falha ao emitir nota", err)
+		writeError(w, http.StatusInternalServerError, "Não foi possível criar a nota")
 		return
 	}
+	writeJSON(w, http.StatusCreated, created)
+}
 
-	if len(nota.Itens) == 0 {
-		http.Error(w, "A nota fiscal precisa ter pelo menos um item", http.StatusBadRequest)
+func (h *NotaHandler) Listar(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Método não permitido")
 		return
 	}
-
-	notaID, err := h.repo.Emitir(nota)
+	notas, err := h.repo.Listar()
 	if err != nil {
-		http.Error(w, "Erro interno ao salvar a nota"+err.Error(), http.StatusInternalServerError)
+		logUnexpected("falha ao listar notas", err)
+		writeError(w, http.StatusInternalServerError, "Não foi possível consultar as notas")
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"mensagem":  "Nota emitida com sucesso",
-		"id_gerado": notaID,
-	})
+	writeJSON(w, http.StatusOK, notas)
 }
 
 func (h *NotaHandler) Imprimir(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		writeError(w, http.StatusMethodNotAllowed, "Método não permitido")
 		return
 	}
-
 	var req struct {
 		ID int `json:"id"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
-
+	if err := decodeJSON(r, &req); err != nil || req.ID <= 0 {
+		writeError(w, http.StatusBadRequest, "Identificador da nota inválido")
+		return
+	}
 	nota, err := h.repo.BuscarNotaPorID(req.ID)
 	if err != nil {
-		http.Error(w, "Nota não encontrada", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "Nota não encontrada")
 		return
 	}
-
-	if nota.Status != "Aberta" {
-		http.Error(w, "Apenas notas Abertas podem ser impressas.", http.StatusBadRequest)
+	if nota.Status == "FECHADA" {
+		writeError(w, http.StatusConflict, "Esta nota já está fechada e não pode ser impressa novamente")
 		return
 	}
-
-	jsonData, _ := json.Marshal(nota.Itens)
-	resp, err := http.Post("http://localhost:8080/produtos/baixa", "application/json", bytes.NewBuffer(jsonData))
-
-	// 3. TRATAMENTO DE FALHA OBRIGATÓRIO
-	if err != nil || resp.StatusCode != http.StatusOK {
-		http.Error(w, "O Serviço de Estoque está indisponível no momento. A nota não pôde ser impressa.", http.StatusServiceUnavailable)
+	if len(nota.Itens) == 0 {
+		writeError(w, http.StatusUnprocessableEntity, "Não é possível fechar uma nota sem itens")
 		return
 	}
+	log.Printf("início do fechamento da nota %d", nota.ID)
+	payload, _ := json.Marshal(nota.Itens)
+	resp, err := h.client.Post(h.stockURL+"/produtos/baixa", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		logUnexpected("serviço de estoque indisponível", err)
+		writeError(w, http.StatusServiceUnavailable, "Não foi possível concluir a nota porque o serviço de estoque está temporariamente indisponível. Tente novamente em alguns instantes.")
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnprocessableEntity {
+		writeError(w, http.StatusUnprocessableEntity, "Não foi possível concluir a nota: estoque insuficiente ou produto indisponível")
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		logUnexpected("estoque retornou resposta inesperada: "+string(body), errors.New(resp.Status))
+		writeError(w, http.StatusServiceUnavailable, "Não foi possível concluir a nota porque o serviço de estoque está temporariamente indisponível. Tente novamente em alguns instantes.")
+		return
+	}
+	if err := h.repo.FecharNota(nota.ID); err != nil {
+		logUnexpected("falha ao fechar nota após baixa de estoque", err)
+		if errors.Is(err, domain.ErrNotaFechada) {
+			writeError(w, http.StatusConflict, "Esta nota já está fechada")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "A baixa foi confirmada, mas não foi possível finalizar a nota. Consulte o suporte.")
+		return
+	}
+	log.Printf("nota %d fechada com sucesso", nota.ID)
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Nota fechada com sucesso.", "nota": nota.ID, "numero": nota.Numero, "status": "FECHADA"})
+}
 
-	h.repo.FecharNota(req.ID)
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"mensagem": "Nota impressa com sucesso!"})
+func validarNota(nota *domain.NotaFiscal) error {
+	if len(nota.Itens) == 0 {
+		return domain.ErrNotaSemItens
+	}
+	var total float64
+	for i := range nota.Itens {
+		item := &nota.Itens[i]
+		item.ProdutoCodigo = strings.TrimSpace(item.ProdutoCodigo)
+		if item.ProdutoCodigo == "" || item.Quantidade <= 0 || item.PrecoUnitario < 0 {
+			return domain.ErrValidacao
+		}
+		item.Subtotal = float64(item.Quantidade) * item.PrecoUnitario
+		total += item.Subtotal
+	}
+	nota.ValorTotal = total
+	return nil
 }

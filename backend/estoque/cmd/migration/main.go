@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sistema-notas/estoque/internal/config"
 
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 )
 
 func main() {
-	connStr := "host=localhost port=5432 user=root password=rootpassword dbname=sistema_notas sslmode=disable"
+	connStr := config.Get("DATABASE_URL", "host=localhost port=5432 user=postgres password=postgres dbname=sistema_notas sslmode=disable")
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
